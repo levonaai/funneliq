@@ -12,3 +12,10 @@ pandas
 numpy
 python-dotenv
 pyjwt
+
+# Work Package 2+: gradient boosting models
+# (used via native Booster APIs, not the sklearn-compatible wrappers -
+# see analysis/ltv_regression.py for why)
+xgboost
+lightgbm
+catboost
