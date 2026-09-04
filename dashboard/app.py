@@ -63,7 +63,7 @@ fig = go.Figure(
     )
 )
 fig.update_layout(margin={"l": 10, "r": 10, "t": 10, "b": 10})
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 col1, col2 = st.columns(2)
 with col1:
