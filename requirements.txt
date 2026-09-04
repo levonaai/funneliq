@@ -19,3 +19,7 @@ pyjwt
 xgboost
 lightgbm
 catboost
+
+# Work Package 5+: dashboard
+streamlit
+plotly
