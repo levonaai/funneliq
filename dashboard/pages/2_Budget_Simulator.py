@@ -20,10 +20,15 @@ from analysis.budget_optimizer import (
     sweep_strategies,
 )
 from analysis.data_cleaning import clean, load_raw
+from dashboard.auth import render_account_sidebar, require_login
 
 CSV_PATH = "funnel_marketing_data.csv"
 
 st.set_page_config(page_title="FunnelIQ - Budget Simulator", page_icon="💰")
+
+session = require_login()
+render_account_sidebar(session)
+
 st.title("Budget Optimization Simulator")
 
 if not Path(CSV_PATH).exists():

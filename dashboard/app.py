@@ -1,6 +1,6 @@
 """FunnelIQ Streamlit dashboard.
 
-Currently shows the Work Package 5 follow-up funnel visual. Reuses the same
+Shows the Work Package 5 follow-up funnel visual. Reuses the same
 computation functions as analysis/followup_funnel.py (single source of
 truth for the numbers), so the chart always matches
 docs/followup_funnel_findings.md.
@@ -9,10 +9,11 @@ Run locally:
 
     streamlit run dashboard/app.py
 
-NOTE: reads the local funnel_marketing_data.csv directly, same as the
-analysis/ scripts - this is a placeholder data source. A deployed instance
-needs the Supabase-backed read path (and the login UI) from Pillar 2 before
-it can show real data in production; both are tracked as open gaps in the
+Gated behind Supabase email/password sign-in (dashboard/auth.py), per
+Pillar 2. NOTE: reads the local funnel_marketing_data.csv directly, same
+as the analysis/ scripts - this is a placeholder data source. A deployed
+instance still needs the Supabase-backed *data* read path (this page reads
+the CSV, not the `funnel_records` table) - tracked as an open gap in the
 README roadmap.
 """
 
@@ -31,10 +32,15 @@ from analysis.followup_funnel import (
     find_anomalous_stage,
     stage_totals,
 )
+from dashboard.auth import render_account_sidebar, require_login
 
 CSV_PATH = "funnel_marketing_data.csv"
 
 st.set_page_config(page_title="FunnelIQ Dashboard", page_icon="📊")
+
+session = require_login()
+render_account_sidebar(session)
+
 st.title("FunnelIQ - Follow-Up Funnel")
 
 if not Path(CSV_PATH).exists():

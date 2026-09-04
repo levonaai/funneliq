@@ -1,13 +1,7 @@
-import time
-
-import jwt
-import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
 from app.main import app
 
-TEST_SECRET = "test-secret-that-is-long-enough-for-hs256"
 client = TestClient(app)
 
 VALID_LEAD = {
@@ -31,31 +25,13 @@ VALID_LEAD = {
 }
 
 
-@pytest.fixture(autouse=True)
-def _configure_test_secret(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("SUPABASE_JWT_SECRET", TEST_SECRET)
-    get_settings.cache_clear()
-    yield
-    get_settings.cache_clear()
-
-
-def _make_token() -> str:
-    payload = {
-        "sub": "user-123",
-        "email": "test@example.com",
-        "aud": "authenticated",
-        "exp": int(time.time()) + 3600,
-    }
-    return jwt.encode(payload, TEST_SECRET, algorithm="HS256")
-
-
 def test_score_lead_without_token_returns_401() -> None:
     response = client.post("/api/score-lead", json=VALID_LEAD)
     assert response.status_code == 401
 
 
-def test_score_lead_with_valid_token_returns_score_in_range() -> None:
-    token = _make_token()
+def test_score_lead_with_valid_token_returns_score_in_range(make_token) -> None:
+    token = make_token()
     response = client.post(
         "/api/score-lead", json=VALID_LEAD, headers={"Authorization": f"Bearer {token}"}
     )

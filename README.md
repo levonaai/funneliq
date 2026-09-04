@@ -5,13 +5,14 @@ FunnelIQ turns raw marketing and sales data from **Northbound Media**
 production-ready Business Intelligence tool.
 
 The full project spans three infrastructure pillars and six analytical work
-packages (see `INSTRUCTIONS.md` for the complete PRD). **This repository
-currently has Pillars 1-3 scaffolded**: version control + CI (Pillar 1), a
-Supabase schema/RLS/ingestion pipeline and backend JWT verification
-(Pillar 2), and Railway deployment config (Pillar 3). The dashboard, login
-UI, and the six ML/analytics work packages are not built yet.
+packages (see `INSTRUCTIONS.md` for the complete PRD, and
+[`REPORT.md`](REPORT.md) for the consolidated analytical findings). All
+six work packages are implemented. Pillars 1 and 2 are fully live (schema,
+RLS, real ingested data, working Supabase Auth login); Pillar 3 has all
+the deployment config ready and just needs a Railway project connected
+(see setup below).
 
-## Architecture (planned)
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -29,8 +30,9 @@ flowchart LR
     end
 ```
 
-The dashboard and ML models are still planned; everything else in the
-diagram (CI, backend, Postgres, auth, Railway) is wired up.
+Everything in this diagram is implemented and locally verified end-to-end
+(dashboard, backend, Postgres, auth, models); only the Railway deployment
+itself is still a manual setup step (see Pillar 3 below).
 
 ## Live app
 
@@ -42,23 +44,31 @@ add the URL here once deployed.
 1. Create a project at [supabase.com](https://supabase.com).
 2. Copy `.env.example` to `.env` and fill in the values from
    **Project Settings -> API** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`) and
-   **Project Settings -> Database -> Connection string -> URI**
-   (`DATABASE_URL`). Never commit `.env`.
+   `SUPABASE_SERVICE_ROLE_KEY`) and **Project Settings -> Database ->
+   Connection string -> URI** (`DATABASE_URL`). Never commit `.env`.
 3. Apply the schema (creates the `funnel_records` table, indexes, and RLS
-   policies): open the Supabase SQL Editor and run `schema.sql`, or via CLI:
-   ```bash
-   psql "$DATABASE_URL" -f schema.sql
-   ```
-4. Load the dataset (reproducible, no manual UI upload):
+   policies) - no `psql` needed:
    ```bash
    pip install -r requirements.txt
+   python -c "
+   from dotenv import load_dotenv; load_dotenv()
+   import os
+   from sqlalchemy import create_engine, text
+   engine = create_engine(os.environ['DATABASE_URL'])
+   with engine.begin() as conn:
+       conn.execute(text(open('schema.sql', encoding='utf-8').read()))
+   print('schema applied')
+   "
+   ```
+   (or paste `schema.sql` into the Supabase SQL Editor if you prefer).
+4. Load the dataset (reproducible, no manual UI upload):
+   ```bash
    python ingest_data.py --truncate
    ```
    `--truncate` empties the table first so the script is safely re-runnable.
-5. In **Authentication -> Providers**, Email/Password is enabled by default —
-   create a test user there (or via the Supabase Auth UI) to obtain a JWT for
-   testing the protected API route below.
+5. In **Authentication -> Providers**, Email/Password is enabled by
+   default. The dashboard's sign-up tab (see below) creates accounts
+   directly - no manual user creation needed.
 
 **Key separation:** only the `anon` key is meant for a frontend/dashboard;
 the `service_role` key bypasses Row Level Security and must stay backend-only
@@ -78,11 +88,12 @@ uvicorn app.main:app --reload
 # POST http://127.0.0.1:8000/api/score-lead  -> requires Authorization: Bearer <supabase-jwt>
 ```
 
-`/api/me` verifies the Supabase-issued JWT (HS256, signed with
-`SUPABASE_JWT_SECRET`) and returns the decoded user id/email — a template for
-further protected routes. `/api/score-lead` returns a 0-100 "Super-Customer"
-likelihood score (Work Package 4) using the model committed at
-`models/super_customer_score.cbm`.
+`/api/me` verifies the Supabase-issued JWT against Supabase's public JWKS
+endpoint (asymmetric ES256/RS256 - current Supabase projects no longer use
+a shared HS256 secret, see `app/auth.py`) and returns the decoded user
+id/email — a template for further protected routes. `/api/score-lead`
+returns a 0-100 "Super-Customer" likelihood score (Work Package 4) using
+the model committed at `models/super_customer_score.cbm`.
 
 ## Running the dashboard locally
 
@@ -90,12 +101,14 @@ likelihood score (Work Package 4) using the model committed at
 streamlit run dashboard/app.py
 ```
 
-Run from the repo root with the same venv as above. Two pages: the Work
+Run from the repo root with the same venv as above. Gated behind Supabase
+email/password sign-in (`dashboard/auth.py`, anon key only) - sign up with
+any email/password on first visit. Two pages once signed in: the Work
 Package 5 follow-up funnel chart, and the Work Package 6 budget
-optimization simulator. Reads `funnel_marketing_data.csv` directly (same
-placeholder data source as the `analysis/` scripts) - the Supabase-backed
-read path and login UI are still open Pillar 2 items, so this local
-dashboard isn't yet what a deployed instance would show.
+optimization simulator. Both still read `funnel_marketing_data.csv`
+directly rather than the live `funnel_records` table (same placeholder
+data source as the `analysis/` scripts) - swapping that read path for a
+Supabase query is the one remaining Pillar 2 item.
 
 ## Pillar 3 setup: Railway (cloud deployment)
 
@@ -107,9 +120,8 @@ dashboard isn't yet what a deployed instance would show.
    start command. No Dockerfile needed.
 3. In the service's **Variables** tab, set every key from `.env.example`
    (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-   `SUPABASE_JWT_SECRET`, `DATABASE_URL`) as environment variables — never
-   commit real values to the repo. `PORT` is injected automatically; don't
-   set it manually.
+   `DATABASE_URL`) as environment variables — never commit real values to
+   the repo. `PORT` is injected automatically; don't set it manually.
 4. Under **Settings -> Networking**, click **Generate Domain** to get a
    public `*.up.railway.app` URL (services aren't publicly reachable until
    you do this).
@@ -137,11 +149,13 @@ Both run automatically via GitHub Actions on every push and pull request
 
 - **Pillar 1 — Version Control & Automation (GitHub):** this repo, branch/PR
   workflow, `.gitignore`, CI lint + test. ✅
-- **Pillar 2 — Database & Authentication (Supabase):** schema, RLS,
-  ingestion script, backend JWT verification. ✅ scaffolded — needs a live
-  Supabase project + a frontend login UI (tracked with the dashboard work).
+- **Pillar 2 — Database & Authentication (Supabase):** ✅ live - schema +
+  RLS applied to a real project, 3,500 rows ingested and verified,
+  anon-key access confirmed blocked, backend JWT verification against
+  Supabase's JWKS, dashboard login screen (email/password, `dashboard/auth.py`).
 - **Pillar 3 — Cloud Deployment (Railway):** `Procfile`, env var contract,
-  `/health` endpoint. ✅ scaffolded — needs the Railway project connected.
+  `/health` endpoint ✅ ready — needs the Railway project connected (see
+  setup above).
 - **Work Package 1 — EDA & Data Cleaning:** ✅ see
   [`docs/eda_findings.md`](docs/eda_findings.md) (generated by
   `python -m analysis.eda`); cleaning rules live in
