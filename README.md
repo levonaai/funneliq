@@ -84,18 +84,28 @@ further protected routes.
 ## Pillar 3 setup: Railway (cloud deployment)
 
 1. On [railway.app](https://railway.app), create a new project ->
-   **Deploy from GitHub repo** -> select this repo.
+   **Deploy from GitHub repo** -> select `levonaai/funneliq` -> pick `main`
+   as the deploy branch (merge the open PRs into `main` first).
 2. Railway auto-detects the Python app via `requirements.txt` and uses the
    `Procfile` (`web: uvicorn app.main:app --host 0.0.0.0 --port $PORT`) as the
-   start command.
-3. In the Railway service's **Variables** tab, set every key from
-   `.env.example` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `DATABASE_URL`) as
-   environment variables. `PORT` is injected automatically — don't set it
-   manually.
-4. Every push to the connected branch triggers an automatic redeploy.
-5. Once deployed, verify `https://<your-app>.up.railway.app/health` returns
-   `{"status": "ok"}`, then update the **Live app** link above.
+   start command. No Dockerfile needed.
+3. In the service's **Variables** tab, set every key from `.env.example`
+   (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `SUPABASE_JWT_SECRET`, `DATABASE_URL`) as environment variables — never
+   commit real values to the repo. `PORT` is injected automatically; don't
+   set it manually.
+4. Under **Settings -> Networking**, click **Generate Domain** to get a
+   public `*.up.railway.app` URL (services aren't publicly reachable until
+   you do this).
+5. Under **Settings -> Source**, confirm **Auto Deploy** is on for the
+   branch you picked in step 1 — every push to it now triggers a redeploy.
+6. Verify it's live: `curl https://<your-app>.up.railway.app/health` should
+   return `{"status": "ok"}`.
+7. Verify it survives a restart: in the Railway dashboard, use the service's
+   **Restart** action (or trigger a redeploy), then re-run the same `curl`
+   against `/health` once it's back up — it should return the same
+   `{"status": "ok"}` with no manual intervention.
+8. Update the **Live app** link above with the generated URL.
 
 ## Development
 
