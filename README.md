@@ -5,10 +5,11 @@ FunnelIQ turns raw marketing and sales data from **Northbound Media**
 production-ready Business Intelligence tool.
 
 The full project spans three infrastructure pillars and six analytical work
-packages (see `INSTRUCTIONS.md` for the complete PRD). **This repository is
-currently at Pillar 1**: version control, CI automation, and a minimal
-FastAPI boilerplate. Database/auth (Supabase) and cloud deployment (Railway)
-land in later pillars.
+packages (see `INSTRUCTIONS.md` for the complete PRD). **This repository
+currently has Pillars 1-3 scaffolded**: version control + CI (Pillar 1), a
+Supabase schema/RLS/ingestion pipeline and backend JWT verification
+(Pillar 2), and Railway deployment config (Pillar 3). The dashboard, login
+UI, and the six ML/analytics work packages are not built yet.
 
 ## Architecture (planned)
 
@@ -28,14 +29,42 @@ flowchart LR
     end
 ```
 
-Only the CI pipeline and the FastAPI scaffold (`/`, `/health`) are live today;
-the dashboard, database, auth, and ML models are planned for later pillars.
+The dashboard and ML models are still planned; everything else in the
+diagram (CI, backend, Postgres, auth, Railway) is wired up.
 
 ## Live app
 
-Coming in Pillar 3 (Railway deployment).
+Coming once Railway is connected to this repo (see Pillar 3 setup below) —
+add the URL here once deployed.
 
-## Running locally
+## Pillar 2 setup: Supabase (database & auth)
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Copy `.env.example` to `.env` and fill in the values from
+   **Project Settings -> API** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`) and
+   **Project Settings -> Database -> Connection string -> URI**
+   (`DATABASE_URL`). Never commit `.env`.
+3. Apply the schema (creates the `funnel_records` table, indexes, and RLS
+   policies): open the Supabase SQL Editor and run `schema.sql`, or via CLI:
+   ```bash
+   psql "$DATABASE_URL" -f schema.sql
+   ```
+4. Load the dataset (reproducible, no manual UI upload):
+   ```bash
+   pip install -r requirements.txt
+   python ingest_data.py --truncate
+   ```
+   `--truncate` empties the table first so the script is safely re-runnable.
+5. In **Authentication -> Providers**, Email/Password is enabled by default —
+   create a test user there (or via the Supabase Auth UI) to obtain a JWT for
+   testing the protected API route below.
+
+**Key separation:** only the `anon` key is meant for a frontend/dashboard;
+the `service_role` key bypasses Row Level Security and must stay backend-only
+(loaded via `app/db.py`, never sent to the browser).
+
+## Running the backend locally
 
 ```bash
 python -m venv .venv
@@ -43,9 +72,30 @@ source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 uvicorn app.main:app --reload
-# GET http://127.0.0.1:8000/       -> {"message": "Hello from FunnelIQ"}
-# GET http://127.0.0.1:8000/health -> {"status": "ok"}
+# GET  http://127.0.0.1:8000/         -> {"message": "Hello from FunnelIQ"}
+# GET  http://127.0.0.1:8000/health   -> {"status": "ok"}
+# GET  http://127.0.0.1:8000/api/me   -> requires Authorization: Bearer <supabase-jwt>
 ```
+
+`/api/me` verifies the Supabase-issued JWT (HS256, signed with
+`SUPABASE_JWT_SECRET`) and returns the decoded user id/email — a template for
+further protected routes.
+
+## Pillar 3 setup: Railway (cloud deployment)
+
+1. On [railway.app](https://railway.app), create a new project ->
+   **Deploy from GitHub repo** -> select this repo.
+2. Railway auto-detects the Python app via `requirements.txt` and uses the
+   `Procfile` (`web: uvicorn app.main:app --host 0.0.0.0 --port $PORT`) as the
+   start command.
+3. In the Railway service's **Variables** tab, set every key from
+   `.env.example` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `DATABASE_URL`) as
+   environment variables. `PORT` is injected automatically — don't set it
+   manually.
+4. Every push to the connected branch triggers an automatic redeploy.
+5. Once deployed, verify `https://<your-app>.up.railway.app/health` returns
+   `{"status": "ok"}`, then update the **Live app** link above.
 
 ## Development
 
@@ -60,11 +110,12 @@ Both run automatically via GitHub Actions on every push and pull request
 ## Project roadmap
 
 - **Pillar 1 — Version Control & Automation (GitHub):** this repo, branch/PR
-  workflow, `.gitignore`, CI lint + test. ✅ current
-- **Pillar 2 — Database & Authentication (Supabase):** relational schema,
-  ingestion script, Row Level Security, login flow.
-- **Pillar 3 — Cloud Deployment (Railway):** public API + dashboard, CD on
-  push, `/health` uptime check.
+  workflow, `.gitignore`, CI lint + test. ✅
+- **Pillar 2 — Database & Authentication (Supabase):** schema, RLS,
+  ingestion script, backend JWT verification. ✅ scaffolded — needs a live
+  Supabase project + a frontend login UI (tracked with the dashboard work).
+- **Pillar 3 — Cloud Deployment (Railway):** `Procfile`, env var contract,
+  `/health` endpoint. ✅ scaffolded — needs the Railway project connected.
 - **Work Packages 1-6:** EDA, LTV regression, upsell classification,
   super-customer scoring, follow-up funnel analysis, budget optimization
   simulator (see `INSTRUCTIONS.md`).
@@ -72,4 +123,6 @@ Both run automatically via GitHub Actions on every push and pull request
 ## Security
 
 Raw data files (`*.csv`), `.env` files, and API keys are excluded via
-`.gitignore` and must never be committed.
+`.gitignore` and must never be committed. `.env.example` documents the
+required variable names without real values. The backend never exposes the
+`service_role` key; only the `anon` key is safe to ship to a frontend.
