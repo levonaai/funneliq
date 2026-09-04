@@ -3,3 +3,11 @@ uvicorn[standard]
 httpx
 pytest
 ruff
+
+# Pillar 2: Supabase & data ingestion
+supabase
+sqlalchemy
+psycopg2-binary
+pandas
+python-dotenv
+pyjwt

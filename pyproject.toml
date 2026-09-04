@@ -1,0 +1,5 @@
+[tool.ruff.lint]
+# B008: FastAPI's dependency-injection system requires `Depends(...)` as an
+# argument default (https://fastapi.tiangolo.com/tutorial/dependencies/) -
+# this is the documented idiom, not a bug.
+ignore = ["B008"]
