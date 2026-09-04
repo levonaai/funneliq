@@ -213,7 +213,7 @@ def main() -> None:
     raw = load_raw(CSV_PATH)
     clean_df, _ = clean(raw)
 
-    X = build_feature_matrix(clean_df)
+    X = build_feature_matrix(clean_df, exclude={TARGET})
     y = clean_df[TARGET]
 
     results = [cross_validate(name, factory, X, y) for name, factory in MODEL_FACTORIES.items()]
