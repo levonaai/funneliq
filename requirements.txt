@@ -9,5 +9,6 @@ supabase
 sqlalchemy
 psycopg2-binary
 pandas
+numpy
 python-dotenv
 pyjwt
