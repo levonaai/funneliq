@@ -11,7 +11,7 @@ psycopg2-binary
 pandas
 numpy
 python-dotenv
-pyjwt
+pyjwt[crypto]
 
 # Work Package 2+: gradient boosting models
 # (used via native Booster APIs, not the sklearn-compatible wrappers -
