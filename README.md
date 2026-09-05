@@ -99,10 +99,15 @@ the model committed at `models/super_customer_score.cbm`.
 ## Running the dashboard locally
 
 ```bash
-streamlit run dashboard/app.py
+python -m streamlit run dashboard/app.py
 ```
 
-Run from the repo root with the same venv as above. Gated behind Supabase
+Use `python -m streamlit run ...`, not bare `streamlit run ...`: on Linux
+(including Railway's runtime) the bare `streamlit` console script doesn't
+add the repo root to Python's import path, so `from analysis... import`
+fails with `ModuleNotFoundError`. `python -m` always adds the current
+directory, on every platform. Run from the repo root with the same venv as
+above. Gated behind Supabase
 email/password sign-in (`dashboard/auth.py`, anon key only) - sign up with
 any email/password on first visit. Two pages once signed in: the Work
 Package 5 follow-up funnel chart, and the Work Package 6 budget
@@ -135,6 +140,25 @@ Supabase query is the one remaining Pillar 2 item.
    against `/health` once it's back up — it should return the same
    `{"status": "ok"}` with no manual intervention.
 8. Update the **Live app** link above with the generated URL.
+
+### Deploying the dashboard (second Railway service)
+
+The steps above deploy only the FastAPI backend. The Streamlit dashboard
+needs its own service in the same Railway project:
+
+1. In the same project, **+ New -> GitHub Repo -> `levonaai/funneliq`**
+   again - this adds a second service. Rename it (e.g. `dashboard`).
+2. Leave **Root Directory** empty (repo root - same as the API service).
+3. **Settings -> Deploy -> Custom Start Command**:
+   ```
+   python -m streamlit run dashboard/app.py --server.port $PORT --server.address 0.0.0.0
+   ```
+   Must be `python -m streamlit run ...`, not bare `streamlit run ...` -
+   see the note under "Running the dashboard locally" above for why.
+4. **Variables**: set the same 4 keys as the API service (Railway
+   variables are per-service, not shared automatically).
+5. **Settings -> Networking -> Generate Domain** for this service too - it
+   gets its own separate URL from the API.
 
 ## Development
 

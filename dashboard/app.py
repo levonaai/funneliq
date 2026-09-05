@@ -5,9 +5,11 @@ computation functions as analysis/followup_funnel.py (single source of
 truth for the numbers), so the chart always matches
 docs/followup_funnel_findings.md.
 
-Run locally:
+Run locally (must be `python -m streamlit run`, not bare `streamlit run`
+- on Linux the bare console script doesn't add the repo root to Python's
+import path, so `from analysis... import` fails there):
 
-    streamlit run dashboard/app.py
+    python -m streamlit run dashboard/app.py
 
 Gated behind Supabase email/password sign-in (dashboard/auth.py), per
 Pillar 2. NOTE: reads the local funnel_marketing_data.csv directly, same
