@@ -12,21 +12,16 @@ import path, so `from analysis... import` fails there):
     python -m streamlit run dashboard/app.py
 
 Gated behind Supabase email/password sign-in (dashboard/auth.py), per
-Pillar 2. NOTE: reads the local funnel_marketing_data.csv directly, same
-as the analysis/ scripts - this is a placeholder data source. A deployed
-instance still needs the Supabase-backed *data* read path (this page reads
-the CSV, not the `funnel_records` table) - tracked as an open gap in the
-README roadmap.
+Pillar 2. Reads live data from the `funnel_records` table via the signed-in
+user's own JWT (dashboard/data.py) - RLS applies exactly as it would for
+any other authenticated client.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import plotly.graph_objects as go
 import streamlit as st
 
-from analysis.data_cleaning import clean, load_raw
 from analysis.followup_funnel import (
     STAGES,
     avg_followup_cycles_for_closed,
@@ -35,8 +30,7 @@ from analysis.followup_funnel import (
     stage_totals,
 )
 from dashboard.auth import render_account_sidebar, require_login
-
-CSV_PATH = "funnel_marketing_data.csv"
+from dashboard.data import load_clean_funnel_data
 
 st.set_page_config(page_title="FunnelIQ Dashboard", page_icon="📊")
 
@@ -45,16 +39,11 @@ render_account_sidebar(session)
 
 st.title("FunnelIQ - Follow-Up Funnel")
 
-if not Path(CSV_PATH).exists():
-    st.error(
-        f"'{CSV_PATH}' not found. This local dashboard reads the raw dataset "
-        "directly (same as the analysis/ scripts) - place the CSV in the "
-        "project root to see the chart."
-    )
+try:
+    clean_df, cleaning_report = load_clean_funnel_data(session["access_token"])
+except Exception as exc:  # noqa: BLE001 - surface any Supabase/query failure to the user
+    st.error(f"Could not load data from Supabase: {exc}")
     st.stop()
-
-raw = load_raw(CSV_PATH)
-clean_df, cleaning_report = clean(raw)
 
 totals = stage_totals(clean_df)
 rates = dropoff_rates(totals)

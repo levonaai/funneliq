@@ -107,14 +107,15 @@ Use `python -m streamlit run ...`, not bare `streamlit run ...`: on Linux
 add the repo root to Python's import path, so `from analysis... import`
 fails with `ModuleNotFoundError`. `python -m` always adds the current
 directory, on every platform. Run from the repo root with the same venv as
-above. Gated behind Supabase
-email/password sign-in (`dashboard/auth.py`, anon key only) - sign up with
-any email/password on first visit. Two pages once signed in: the Work
-Package 5 follow-up funnel chart, and the Work Package 6 budget
-optimization simulator. Both still read `funnel_marketing_data.csv`
-directly rather than the live `funnel_records` table (same placeholder
-data source as the `analysis/` scripts) - swapping that read path for a
-Supabase query is the one remaining Pillar 2 item.
+above. Gated behind Supabase email/password sign-in (`dashboard/auth.py`,
+anon key only) - sign up with any email/password on first visit. Two pages
+once signed in: the Work Package 5 follow-up funnel chart, and the Work
+Package 6 budget optimization simulator. Both read live data from the
+`funnel_records` table via the signed-in user's own JWT
+(`dashboard/data.py`) - RLS applies exactly as it would for any other
+authenticated client, so this only works because you're logged in. (The
+`analysis/*.py` scripts still read the local CSV directly - that's a
+one-time data-prep step, separate from the live app.)
 
 ## Pillar 3 setup: Railway (cloud deployment)
 
