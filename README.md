@@ -35,10 +35,15 @@ itself is still a manual setup step (see Pillar 3 below).
 
 ## Live app
 
-**API**: https://funneliq-production-9c1b.up.railway.app
-([`/health`](https://funneliq-production-9c1b.up.railway.app/health),
-`/api/me`, `/api/score-lead` - JWT-protected). Deployed on Railway,
-auto-deploys on every push to `main`.
+- **Dashboard**: https://web-production-f417e.up.railway.app - Streamlit
+  UI (login required), follow-up funnel chart and budget simulator, reads
+  live data from `funnel_records`.
+- **API**: https://funneliq-production-9c1b.up.railway.app
+  ([`/health`](https://funneliq-production-9c1b.up.railway.app/health),
+  `/api/me`, `/api/score-lead` - JWT-protected).
+
+Both deployed on Railway as separate services in the same project;
+both auto-deploy on every push to `main`.
 
 ## Pillar 2 setup: Supabase (database & auth)
 
