@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 
 import pandas as pd
+import streamlit as st
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
@@ -48,7 +49,15 @@ def fetch_funnel_records(client: Client) -> pd.DataFrame:
     return df.drop(columns=["id", "created_at"], errors="ignore")
 
 
+@st.cache_data(ttl=300, show_spinner="Loading data from Supabase...")
 def load_clean_funnel_data(access_token: str) -> tuple[pd.DataFrame, CleaningReport]:
+    """Cached per access token for 5 minutes.
+
+    Interactive filters (dashboard/filters.py) trigger a full script rerun
+    on every change, which would otherwise re-fetch the whole table from
+    Supabase on each click - this keeps that path near-instant while still
+    picking up new data within a few minutes.
+    """
     client = get_authenticated_client(access_token)
     raw = fetch_funnel_records(client)
     return clean(raw)

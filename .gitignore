@@ -30,3 +30,8 @@ Thumbs.db
 
 # ML training artifacts
 catboost_info/
+
+# Local dev-server scratch files (from running the dashboard in the background)
+streamlit_out.log
+streamlit_err.log
+streamlit_pid.txt
